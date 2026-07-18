@@ -88,7 +88,16 @@ const avatarEmoji: Record<string, string> = {
   Otter: "🦦",
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+};
 
 function formatDate(value: string) {
   if (!value) return "-";
@@ -105,6 +114,38 @@ function dateOffset(base: string, value: string) {
   const baseDate = new Date(`${base}T00:00:00`);
   const date = new Date(`${value}T00:00:00`);
   return Math.max(0, Math.round((date.getTime() - baseDate.getTime()) / 86400000));
+}
+
+type TaskDeadlineState = "normal" | "due-today" | "overdue-recent" | "overdue-stale";
+
+const taskDeadlineMeta: Record<TaskDeadlineState, { card: string; chip: string; timeline: string }> = {
+  normal: { card: "", chip: "", timeline: "" },
+  "due-today": {
+    card: "border-amber-300 bg-amber-50/80 dark:border-amber-700 dark:bg-amber-950/30",
+    chip: "bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100",
+    timeline: "bg-amber-400",
+  },
+  "overdue-recent": {
+    card: "border-red-400 bg-red-50/90 dark:border-red-700 dark:bg-red-950/35",
+    chip: "bg-red-600 text-white",
+    timeline: "bg-red-600",
+  },
+  "overdue-stale": {
+    card: "border-red-900/70 bg-red-950/10 dark:border-red-900 dark:bg-red-950/55",
+    chip: "bg-red-900 text-red-50",
+    timeline: "bg-red-900",
+  },
+};
+
+function getTaskDeadline(task: ProjectTask, currentDate = today()) {
+  if (task.status === "Done" || !task.dueDate) return { state: "normal" as const, daysOverdue: 0, label: "" };
+  const current = new Date(`${currentDate}T00:00:00`).getTime();
+  const due = new Date(`${task.dueDate}T00:00:00`).getTime();
+  const daysOverdue = Math.round((current - due) / 86400000);
+  if (daysOverdue < 0) return { state: "normal" as const, daysOverdue, label: "" };
+  if (daysOverdue === 0) return { state: "due-today" as const, daysOverdue, label: "D-Day" };
+  if (daysOverdue <= 3) return { state: "overdue-recent" as const, daysOverdue, label: `Overdue H+${daysOverdue}` };
+  return { state: "overdue-stale" as const, daysOverdue, label: `Overdue H+${daysOverdue}` };
 }
 
 function getGoogleCalendarUrl(event: AppCalendarEvent, attendees: TeamMember[]) {
@@ -741,17 +782,20 @@ export default function ClientManagementPage() {
             {visibleProjectTasks.map((task) => {
               const offset = dateOffset(timeline.base, task.dueDate);
               const width = 1;
+              const deadline = getTaskDeadline(task);
+              const deadlineMeta = taskDeadlineMeta[deadline.state];
               return (
-                <div key={task.id} role="button" tabIndex={0} onClick={() => setDetailTask(task)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setDetailTask(task); }} className="grid min-w-[860px] cursor-pointer grid-cols-[230px_1fr] items-center gap-4 rounded-lg p-2 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:hover:bg-slate-800/60">
+                <div key={task.id} role="button" tabIndex={0} onClick={() => setDetailTask(task)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setDetailTask(task); }} className={cn("grid min-w-[860px] cursor-pointer grid-cols-[230px_1fr] items-center gap-4 rounded-lg border border-transparent p-2 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:hover:bg-slate-800/60", deadlineMeta.card)}>
                   <div className="flex items-center gap-3">
                     <Avatar member={memberById(task.assigneeId)} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black">{task.title}</p>
                       <p className="truncate text-xs text-slate-400">{task.client || task.project}</p>
+                      {deadline.label && <span className={cn("mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black", deadlineMeta.chip)}>{deadline.label}</span>}
                     </div>
                   </div>
                   <div className="relative h-12 rounded-lg bg-slate-100 dark:bg-slate-800">
-                    <div className={cn("absolute top-2 h-8 rounded-lg px-3 py-2 text-xs font-black text-white", statusMeta[task.status].accent)} style={{ left: `${(offset / timeline.span) * 100}%`, width: `${Math.max(8, (width / timeline.span) * 100)}%` }}>
+                    <div className={cn("absolute top-2 h-8 rounded-lg px-3 py-2 text-xs font-black text-white", deadline.state === "normal" ? statusMeta[task.status].accent : deadlineMeta.timeline)} style={{ left: `${(offset / timeline.span) * 100}%`, width: `${Math.max(8, (width / timeline.span) * 100)}%` }}>
                       {formatDate(task.dueDate)}
                     </div>
                   </div>
@@ -1120,8 +1164,11 @@ function TaskCard({
 }) {
   const latestUpdate = task.progressUpdates?.slice().reverse()[0];
   const latestComment = task.comments?.slice().reverse()[0];
+  const deadline = getTaskDeadline(task);
+  const deadlineMeta = taskDeadlineMeta[deadline.state];
   return (
-    <article draggable={canMove} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onOpen(); }} onDragStart={(event) => { if (!canMove) return; event.dataTransfer.setData("id", task.id); }} className={cn("animate-[fadeUp_.28s_ease-out] cursor-pointer rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-800 dark:bg-slate-900", canMove && "cursor-grab")}>
+    <article draggable={canMove} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onOpen(); }} onDragStart={(event) => { if (!canMove) return; event.dataTransfer.setData("id", task.id); }} className={cn("animate-[fadeUp_.28s_ease-out] cursor-pointer rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-800 dark:bg-slate-900", deadlineMeta.card, canMove && "cursor-grab")}>
+      {deadline.label && <div className={cn("mb-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black", deadlineMeta.chip)}><Clock3 size={12} />{deadline.label}</div>}
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h4 className="truncate text-sm font-black">{task.title}</h4>
@@ -1150,7 +1197,7 @@ function TaskCard({
       {latestComment && <div className="mt-3 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800"><span className="font-black">{latestComment.authorId === member.id ? member.name : watcher.name}: </span>{latestComment.note}</div>}
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
         <Badge tone={priorityTone[task.priority]}>{task.priority}</Badge>
-        <span className="text-xs font-black text-slate-500">{formatDate(task.dueDate)}</span>
+        <span className={cn("rounded-full px-2 py-1 text-xs font-black text-slate-500", deadline.label && deadlineMeta.chip)}>{formatDate(task.dueDate)}</span>
       </div>
     </article>
   );
