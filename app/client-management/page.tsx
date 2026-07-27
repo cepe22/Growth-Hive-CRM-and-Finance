@@ -507,14 +507,19 @@ export default function ClientManagementPage() {
     updateTaskNotification(notification.id, { ...notification, read: true });
   }
 
-  function shiftDetailTaskStatus(direction: -1 | 1) {
-    if (!detailTask || !canMoveTask(detailTask)) return;
-    const currentIndex = projectStatuses.indexOf(detailTask.status);
+  function shiftTaskStatus(task: ProjectTask, direction: -1 | 1) {
+    if (!canMoveTask(task)) return;
+    const currentIndex = projectStatuses.indexOf(task.status);
     const nextIndex = Math.min(projectStatuses.length - 1, Math.max(0, currentIndex + direction));
     const nextStatus = projectStatuses[nextIndex];
-    if (!nextStatus || nextStatus === detailTask.status) return;
-    moveProjectTask(detailTask.id, nextStatus);
-    setDetailTask({ ...detailTask, status: nextStatus });
+    if (!nextStatus || nextStatus === task.status) return;
+    moveProjectTask(task.id, nextStatus);
+    if (detailTask?.id === task.id) setDetailTask({ ...task, status: nextStatus });
+  }
+
+  function shiftDetailTaskStatus(direction: -1 | 1) {
+    if (!detailTask) return;
+    shiftTaskStatus(detailTask, direction);
   }
 
   function respondToEvent(eventId: string, memberId: string, response: EventResponse) {
@@ -642,7 +647,7 @@ export default function ClientManagementPage() {
                   <span className="ml-auto rounded-full bg-white px-2 py-1 text-[10px] font-black text-slate-400 dark:bg-slate-900">{items.length}</span>
                 </div>
                 <div className="space-y-3">
-                  {items.map((task) => <TaskCard key={task.id} task={task} member={memberById(task.assigneeId)} assigner={memberById(task.assignedById)} watcher={memberById(task.watcherId)} canMove={canMoveTask(task)} canEdit={canEditTask(task)} canProgress={canProgressTask(task)} canComment={canCommentTask(task)} onOpen={() => setDetailTask(task)} onEdit={() => { if (!canEditTask(task)) return; setEditingTask(task); setAttachmentError(""); setTaskModal(true); }} onProgress={() => openProgress(task)} onComment={() => openComment(task)} onImage={() => setAttachmentPreviewTask(task)} onRemove={() => removeTask(task)} />)}
+                  {items.map((task) => <TaskCard key={task.id} task={task} member={memberById(task.assigneeId)} assigner={memberById(task.assignedById)} watcher={memberById(task.watcherId)} canMove={canMoveTask(task)} canEdit={canEditTask(task)} canProgress={canProgressTask(task)} canComment={canCommentTask(task)} onMove={(direction) => shiftTaskStatus(task, direction)} onOpen={() => setDetailTask(task)} onEdit={() => { if (!canEditTask(task)) return; setEditingTask(task); setAttachmentError(""); setTaskModal(true); }} onProgress={() => openProgress(task)} onComment={() => openComment(task)} onImage={() => setAttachmentPreviewTask(task)} onRemove={() => removeTask(task)} />)}
                 </div>
               </div>
             );
@@ -685,10 +690,12 @@ export default function ClientManagementPage() {
                           member={memberById(task.assigneeId)}
                           assigner={memberById(task.assignedById)}
                           watcher={memberById(task.watcherId)}
-                          canMove={false}
+                          canMove={canMoveTask(task)}
+                          canDrag={false}
                           canEdit={canEditTask(task)}
                           canProgress={canProgressTask(task)}
                           canComment={canCommentTask(task)}
+                          onMove={(direction) => shiftTaskStatus(task, direction)}
                           showStatus
                           showMoveLock={false}
                           onOpen={() => setDetailTask(task)}
@@ -746,10 +753,12 @@ export default function ClientManagementPage() {
                         member={member}
                         assigner={memberById(task.assignedById)}
                         watcher={memberById(task.watcherId)}
-                        canMove={false}
+                        canMove={canMoveTask(task)}
+                        canDrag={false}
                         canEdit={canEditTask(task)}
                         canProgress={canProgressTask(task)}
                         canComment={canCommentTask(task)}
+                        onMove={(direction) => shiftTaskStatus(task, direction)}
                         showStatus
                         showMoveLock={false}
                         onOpen={() => setDetailTask(task)}
@@ -1068,9 +1077,11 @@ function DetailField({ label, value }: { label: string; value: string }) {
 function MobileStatusControl({
   status,
   onMove,
+  compact = false,
 }: {
   status: ProjectStatus;
   onMove: (direction: -1 | 1) => void;
+  compact?: boolean;
 }) {
   const swipeStart = useRef<number | null>(null);
   const currentIndex = projectStatuses.indexOf(status);
@@ -1079,17 +1090,21 @@ function MobileStatusControl({
 
   return (
     <section
-      className="touch-pan-y rounded-lg border border-teal-100 bg-teal-50/70 p-3 dark:border-teal-900 dark:bg-teal-950/30 md:hidden"
+      className={cn("touch-pan-y rounded-lg border border-teal-100 bg-teal-50/70 p-3 dark:border-teal-900 dark:bg-teal-950/30 md:hidden", compact && "mt-3")}
+      onClick={(event) => event.stopPropagation()}
       onTouchStart={(event) => { swipeStart.current = event.changedTouches[0]?.clientX ?? null; }}
       onTouchCancel={() => { swipeStart.current = null; }}
       onTouchEnd={(event) => {
         if (swipeStart.current === null) return;
         const distance = (event.changedTouches[0]?.clientX ?? swipeStart.current) - swipeStart.current;
-        if (Math.abs(distance) >= 48) onMove(distance < 0 ? 1 : -1);
+        if (Math.abs(distance) >= 36) onMove(distance < 0 ? 1 : -1);
         swipeStart.current = null;
       }}
     >
-      <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-teal-700 dark:text-teal-300">Status pengerjaan</p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-black uppercase tracking-wider text-teal-700 dark:text-teal-300">Status pengerjaan</p>
+        <span className="text-[9px] font-bold text-teal-600/70 dark:text-teal-300/70">Tap panah atau swipe</span>
+      </div>
       <div className="grid min-h-14 grid-cols-[1fr_auto_1fr] items-stretch gap-2">
         <button
           type="button"
@@ -1136,6 +1151,8 @@ function TaskCard({
   canEdit,
   canProgress,
   canComment,
+  onMove,
+  canDrag = canMove,
   showStatus = false,
   showMoveLock = true,
   onOpen,
@@ -1153,6 +1170,8 @@ function TaskCard({
   canEdit: boolean;
   canProgress: boolean;
   canComment: boolean;
+  onMove: (direction: -1 | 1) => void;
+  canDrag?: boolean;
   showStatus?: boolean;
   showMoveLock?: boolean;
   onOpen: () => void;
@@ -1167,7 +1186,7 @@ function TaskCard({
   const deadline = getTaskDeadline(task);
   const deadlineMeta = taskDeadlineMeta[deadline.state];
   return (
-    <article draggable={canMove} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onOpen(); }} onDragStart={(event) => { if (!canMove) return; event.dataTransfer.setData("id", task.id); }} className={cn("animate-[fadeUp_.28s_ease-out] cursor-pointer rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-800 dark:bg-slate-900", deadlineMeta.card, canMove && "cursor-grab")}>
+    <article draggable={canDrag} role="button" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onOpen(); }} onDragStart={(event) => { if (!canDrag) return; event.dataTransfer.setData("id", task.id); }} className={cn("animate-[fadeUp_.28s_ease-out] cursor-pointer rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-slate-800 dark:bg-slate-900", deadlineMeta.card, canDrag && "cursor-grab")}>
       {deadline.label && <div className={cn("mb-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black", deadlineMeta.chip)}><Clock3 size={12} />{deadline.label}</div>}
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -1187,6 +1206,7 @@ function TaskCard({
         <span>Assigned by {assigner.name}</span>
         <span>Pengawas {watcher.name}</span>
       </div>
+      {canMove && <MobileStatusControl status={task.status} onMove={onMove} compact />}
       {showMoveLock && !canMove && <div className="mt-3 inline-flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-black text-slate-400 dark:bg-slate-800"><Lock size={11} /> Board move dikunci untuk assignee</div>}
       <div className="mt-3 line-clamp-2 min-h-10 whitespace-pre-wrap text-xs leading-5 text-slate-500 dark:text-slate-300"><LinkifiedText text={task.description || "Belum ada catatan."} /></div>
       {(task.attachmentImage || task.attachmentLink) && <div className="mt-3 flex flex-wrap gap-2">
