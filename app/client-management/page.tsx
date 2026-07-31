@@ -65,6 +65,7 @@ const priorityTone: Record<ProjectPriority, "red" | "amber" | "slate"> = {
 
 const socialMediaKeywords = ["social media", "content", "production"];
 const adsMarketplaceKeywords = ["meta ads", "shopee", "tiktok", "marketplace", "ads growth", "ads management"];
+const projectManagerClientOptions = ["Relevant Leadership Academy"];
 type ProjectHubView = "board" | "client-board" | "team-board" | "timeline" | "clients" | "calendar";
 
 const roleRank: Record<TeamRole, number> = {
@@ -290,7 +291,7 @@ export default function ClientManagementPage() {
     ? Array.from(new Set([...allActiveProjectOptions, ...sharedWorkspaceProjectOptions])).sort((a, b) => a.localeCompare(b))
     : canCreateTask ? allActiveProjectOptions : projectOptions;
   const selectableClientOptions = isProjectManager
-    ? Array.from(new Set([...allActiveClientOptions, ...sharedWorkspaceClientOptions])).sort((a, b) => a.localeCompare(b))
+    ? Array.from(new Set([...allActiveClientOptions, ...sharedWorkspaceClientOptions, ...projectManagerClientOptions])).sort((a, b) => a.localeCompare(b))
     : canCreateTask ? allActiveClientOptions : clientOptions;
   const taskProjectOptions = Array.from(new Set([...(editingTask?.project ? [editingTask.project] : []), ...selectableProjectOptions]));
   const taskClientOptions = Array.from(new Set([...(editingTask?.client ? [editingTask.client] : []), ...selectableClientOptions]));
