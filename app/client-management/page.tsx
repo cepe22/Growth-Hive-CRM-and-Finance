@@ -239,7 +239,8 @@ export default function ClientManagementPage() {
   const isAdmin = access === "admin";
   const isReadOnly = access === "readonly";
   const canReadAll = isAdmin || isReadOnly;
-  const currentRoleRank = currentMember ? roleRank[currentMember.role] : Number.POSITIVE_INFINITY;
+  const isProjectManager = currentMember?.id === "tm-inaya" || currentMember?.role === "Project Manager";
+  const currentRoleRank = isProjectManager ? roleRank["Project Manager"] : currentMember ? roleRank[currentMember.role] : Number.POSITIVE_INFINITY;
   const canCreateSpecialistTask = currentMember ? ["tm-joshua", "tm-sellina"].includes(currentMember.id) : false;
   const isSellina = currentMember?.id === "tm-sellina";
   const hasChronosCreativeAccess = currentMember ? ["tm-sellina", "tm-xiu"].includes(currentMember.id) : false;
@@ -274,6 +275,10 @@ export default function ClientManagementPage() {
   const clientOptions = Array.from(new Set([...visibleActiveClients.map((client) => client.brand), ...(chronosClient ? [chronosClient.brand] : [])]));
   const allActiveProjectOptions = Array.from(new Set(activeClients.flatMap((client) => getClientProjects(client).map((project) => project.name))));
   const allActiveClientOptions = Array.from(new Set(activeClients.map((client) => client.brand)));
+  const sharedWorkspaceProjectOptions = Array.from(new Set(projectTasks.filter((task) => !task.archivedAt && task.project).map((task) => task.project)));
+  const sharedWorkspaceClientOptions = Array.from(new Set(projectTasks
+    .filter((task) => !task.archivedAt && task.client && task.client !== "Internal")
+    .map((task) => task.client)));
   const eligibleAssignees = currentMember?.id === "tm-joshua"
     ? teamMembers.filter((member) => ["tm-joshua", "tm-sellina"].includes(member.id))
     : isSellina
@@ -281,8 +286,12 @@ export default function ClientManagementPage() {
       : teamMembers.filter((member) => member.id === currentMember?.id || roleRank[member.role] > currentRoleRank);
   const eligibleWatchers = teamMembers.filter((member) => roleRank[member.role] >= currentRoleRank);
   const defaultAssigner = currentMember || teamMembers[0];
-  const selectableProjectOptions = canCreateTask ? allActiveProjectOptions : projectOptions;
-  const selectableClientOptions = canCreateTask ? allActiveClientOptions : clientOptions;
+  const selectableProjectOptions = isProjectManager
+    ? Array.from(new Set([...allActiveProjectOptions, ...sharedWorkspaceProjectOptions])).sort((a, b) => a.localeCompare(b))
+    : canCreateTask ? allActiveProjectOptions : projectOptions;
+  const selectableClientOptions = isProjectManager
+    ? Array.from(new Set([...allActiveClientOptions, ...sharedWorkspaceClientOptions])).sort((a, b) => a.localeCompare(b))
+    : canCreateTask ? allActiveClientOptions : clientOptions;
   const taskProjectOptions = Array.from(new Set([...(editingTask?.project ? [editingTask.project] : []), ...selectableProjectOptions]));
   const taskClientOptions = Array.from(new Set([...(editingTask?.client ? [editingTask.client] : []), ...selectableClientOptions]));
   const activeTasks = visibleProjectTasks.filter((task) => task.status !== "Done");
