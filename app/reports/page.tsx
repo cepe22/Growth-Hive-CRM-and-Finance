@@ -49,6 +49,7 @@ export default function ReportsPage() {
           <p className="mt-1 text-xs text-teal-700/70 dark:text-teal-300/70">
             Periode {report.period} · Sumber: {report.source}
           </p>
+          {report.note && <p className="mt-1 max-w-4xl text-xs leading-5 text-teal-700/70 dark:text-teal-300/70">{report.note}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(financialReports) as ReportYear[]).map((reportYear) => (
@@ -83,7 +84,7 @@ export default function ReportsPage() {
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_1fr]">
         <Card className="p-5"><h2 className="font-black">Komposisi Biaya</h2><p className="mb-5 text-xs text-slate-400">Kategori pengeluaran terbesar {report.period}</p><div className="space-y-4">{report.expenseCategories.map((item) => <div key={item.label}><div className="mb-1.5 flex justify-between gap-4 text-xs"><span className="font-semibold">{item.label}</span><span className="shrink-0 font-black">{rupiah(item.amount)}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-teal-600" style={{ width: `${Math.max(1, item.amount / maxExpense * 100)}%` }} /></div></div>)}</div></Card>
-        <Card className="p-5"><h2 className="font-black">Balance Sheet</h2><p className="mb-4 text-xs text-slate-400">Posisi akhir periode {report.period}</p>{balanceRows.map(([label, value]) => <div key={label} className={`flex justify-between border-b border-slate-100 py-3 text-xs dark:border-slate-800 ${label === "Total Aktiva" || label === "Total Pasiva" ? "font-black text-teal-700" : ""}`}><span>{label}</span><span className={value < 0 ? "text-rose-600" : ""}>{signedRupiah(value)}</span></div>)}</Card>
+        <Card className="p-5"><h2 className="font-black">Balance Sheet</h2><p className="mb-4 text-xs text-slate-400">Posisi akhir {report.balanceSheetPeriod || report.period}</p>{balanceRows.map(([label, value]) => <div key={label} className={`flex justify-between border-b border-slate-100 py-3 text-xs dark:border-slate-800 ${label === "Total Aktiva" || label === "Total Pasiva" ? "font-black text-teal-700" : ""}`}><span>{label}</span><span className={value < 0 ? "text-rose-600" : ""}>{signedRupiah(value)}</span></div>)}</Card>
       </section>
     </>
   );
