@@ -55,7 +55,7 @@ type AppData = {
 const DataContext = createContext<AppData | null>(null);
 const activeClientSeedVersion = "gh-active-clients-2026-07-07-v2";
 const calendarCleanupVersion = "gh-calendar-cleanup-2026-07-07-v1";
-const teamEmailSyncVersion = "gh-team-email-sync-2026-07-13-v3";
+const teamEmailSyncVersion = "gh-team-email-sync-2026-08-04-v4";
 const taskCleanupVersion = "gh-task-cleanup-2026-07-13-v1";
 const sharedPollInterval = 5000;
 

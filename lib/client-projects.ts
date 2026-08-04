@@ -6,6 +6,7 @@ export type TeamRole =
   | "PIC / Owner / Founder"
   | "Project Manager"
   | "Social Media Specialist / Ads Specialist"
+  | "Marketplace & Ads Intern"
   | "Graphic Designer"
   | "Graphic Designer Intern";
 
@@ -116,6 +117,7 @@ export function isProjectTaskReadyToArchive(task: ProjectTask, now = Date.now())
 export const teamRoles: TeamRole[] = [
   "Project Manager",
   "Social Media Specialist / Ads Specialist",
+  "Marketplace & Ads Intern",
   "Graphic Designer",
   "Graphic Designer Intern",
   "PIC / Owner / Founder",
@@ -163,6 +165,14 @@ export const teamMembers: TeamMember[] = [
     role: "Graphic Designer Intern",
     avatar: "Giraffe",
     color: "bg-emerald-100 text-emerald-800",
+  },
+  {
+    id: "tm-cathy",
+    name: "Cathy",
+    email: "cathyaureliaa@gmail.com",
+    role: "Marketplace & Ads Intern",
+    avatar: "Penguin",
+    color: "bg-cyan-100 text-cyan-800",
   },
 ];
 

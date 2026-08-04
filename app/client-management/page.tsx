@@ -72,6 +72,7 @@ const roleRank: Record<TeamRole, number> = {
   "PIC / Owner / Founder": 1,
   "Project Manager": 2,
   "Social Media Specialist / Ads Specialist": 3,
+  "Marketplace & Ads Intern": 4,
   "Graphic Designer": 4,
   "Graphic Designer Intern": 4,
 };
@@ -196,7 +197,7 @@ async function compressTaskImage(file: File) {
 function memberProjectKeywords(member?: TeamMember) {
   if (!member) return [];
   if (member.id === "tm-inaya" || member.id === "tm-sellina") return socialMediaKeywords;
-  if (member.id === "tm-joshua") return adsMarketplaceKeywords;
+  if (member.id === "tm-joshua" || member.id === "tm-cathy") return adsMarketplaceKeywords;
   return [];
 }
 
@@ -281,7 +282,7 @@ export default function ClientManagementPage() {
     .filter((task) => !task.archivedAt && task.client && task.client !== "Internal")
     .map((task) => task.client)));
   const eligibleAssignees = currentMember?.id === "tm-joshua"
-    ? teamMembers.filter((member) => ["tm-joshua", "tm-sellina"].includes(member.id))
+    ? teamMembers.filter((member) => ["tm-joshua", "tm-sellina", "tm-cathy"].includes(member.id))
     : isSellina
       ? teamMembers.filter((member) => ["tm-sellina", "tm-xiu"].includes(member.id))
       : teamMembers.filter((member) => member.id === currentMember?.id || roleRank[member.role] > currentRoleRank);

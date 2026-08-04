@@ -37,7 +37,7 @@ function textMatchesKeywords(value: string, keywords: string[]) {
 function memberProjectKeywords(member?: TeamMember) {
   if (!member) return [];
   if (member.id === "tm-inaya" || member.id === "tm-sellina") return socialMediaKeywords;
-  if (member.id === "tm-joshua") return adsMarketplaceKeywords;
+  if (member.id === "tm-joshua" || member.id === "tm-cathy") return adsMarketplaceKeywords;
   return [];
 }
 

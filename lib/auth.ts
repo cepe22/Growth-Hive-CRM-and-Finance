@@ -6,6 +6,7 @@ export const allowedTeamEmails = [
   "hi.growthive@gmail.com",
   "margareth13105@gmail.com",
   "riko.yf@gmail.com",
+  "cathyaureliaa@gmail.com",
 ] as const;
 
 export const adminEmails = ["growthiveofficial@gmail.com"] as const;
@@ -95,6 +96,7 @@ export function defaultLoginPassword() {
 const initialUserPasswords: Partial<Record<(typeof allowedTeamEmails)[number], string>> = {
   "margareth13105@gmail.com": "Growthive123",
   "riko.yf@gmail.com": "Growthive123",
+  "cathyaureliaa@gmail.com": "Growthive123",
 };
 
 export async function passwordHash(email: string, password: string) {
